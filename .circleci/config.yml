@@ -1,0 +1,38 @@
+# update locally with:
+# openssl aes-256-cbc -e -in secret-env-plain -out secret-env-cipher -k $KEY
+version: 2
+jobs:
+  build:
+    docker:
+      - image: circleci/node
+    steps:
+      - checkout
+      - run:
+          command: |
+            # https://www.openssl.org/docs/faq.html#USER3
+            npm install
+            openssl aes-256-cbc -md md5  -d -in secret-env-cipher -k $KEY >> ~/.circlerc
+            source ~/.circlerc
+            GITHUB_USERNAME=$GITHUB_USERNAME GITHUB_API_KEY=$GITHUB_API_KEY node ./scripts/sync_bugs.js
+
+
+workflows:
+  version: 2
+
+  # workflow jobs are _not_ run in tag builds by default
+  # we use filters to whitelist jobs that should be run for tags
+
+  # workflow jobs are run in _all_ branch builds by default
+  # we use filters to blacklist jobs that shouldn't be run for a branch
+
+  # see: https://circleci.com/docs/2.0/workflows/#git-tag-job-execution
+
+  build-test-push:
+    triggers:
+      - schedule:
+          cron: "0 * * * *"
+          filters:
+            branches:
+              only: master
+    jobs:
+      - build
